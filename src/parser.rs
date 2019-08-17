@@ -56,6 +56,29 @@ pub fn parse<'s>(text: &'s str) -> Result<Term<'s>, failure::Error> {
     Ok(result)
 }
 
+pub fn l<'s, T>(name: &'s str, body: T) -> Term<'s>
+    where T: Into<Term<'s>>
+{
+    Term::Abstraction(name, Box::new(body.into()))
+}
+
+pub fn a<'s, T1, T2>(a: T1, b: T2) -> Term<'s>
+    where T1: Into<Term<'s>>,
+          T2: Into<Term<'s>>
+{
+    Term::Application(Box::new(a.into()), Box::new(b.into()))
+}
+
+pub fn v<'s>(name: &'s str) -> Term<'s> {
+    Term::Variable(name)
+}
+
+impl <'s> From<&'s str> for Term<'s> {
+    fn from(s: &str) -> Term {
+        Term::Variable(s)
+    }
+}
+
 fn pest_to_term(pair: Pair<Rule>) -> Result<Term, ParseError> {
     match pair.as_rule() {
         Rule::main | Rule::term => {
@@ -85,11 +108,6 @@ fn pest_to_term(pair: Pair<Rule>) -> Result<Term, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::Term::*;
-
-    fn l<'s>(name: &'s str, body: Term<'s>) -> Term<'s> { Abstraction(name, Box::new(body)) }
-    fn a<'s>(a: Term<'s>, b: Term<'s>) -> Term<'s> { Application(Box::new(a), Box::new(b)) }
-    fn v<'s>(name: &'s str) -> Term<'s> { Variable(name) }
 
     fn assert_eq<'s>(code: &'s str, expected: Term<'s>) {
         assert_eq!(expected, parse(code).unwrap(), "input program: {}", code);
@@ -107,7 +125,7 @@ mod tests {
     pub fn test_parses_abstraction() {
         assert_eq(
             r"\x    . x",
-            l("x", v("x"))
+            l("x", "x")
         );
     }
 
@@ -115,7 +133,7 @@ mod tests {
     pub fn test_parses_application_without_parentheses() {
         assert_eq(
             r"x y z",
-            a(v("x"), a(v("y"), v("z")))
+            a("x", a("y", "z"))
         );
     }
 
@@ -123,7 +141,7 @@ mod tests {
     pub fn test_parses_application_with_parentheses() {
         assert_eq(
             r"(x y) z",
-            a(a(v("x"), v("y")), v("z"))
+            a(a("x", "y"), "z")
         );
     }
 
@@ -131,7 +149,7 @@ mod tests {
     pub fn test_parses_with_correct_associativity1() {
         assert_eq(
             r"\x . \y . (x x) y",
-            l("x", l("y", a(a(v("x"), v("x")), v("y"))))
+            l("x", l("y", a(a("x", "x"), "y")))
         );
     }
 
@@ -139,7 +157,7 @@ mod tests {
     pub fn test_parses_with_correct_associativity2() {
         assert_eq(
             r"\x . \y . x (x y)",
-            l("x", l("y", a(v("x"), a(v("x"), v("y")))))
+            l("x", l("y", a("x", a("x", "y"))))
         );
     }
 
@@ -147,7 +165,15 @@ mod tests {
     pub fn test_parses_with_correct_associativity3() {
         assert_eq(
             r"\x . (\y . x x y) x",
-            l("x", a(l("y", a(v("x"), a(v("x"), v("y")))), v("x"))),
+            l("x", a(l("y", a("x", a("x", "y"))), "x")),
+        );
+    }
+
+    #[test]
+    pub fn test_parses_with_correct_associativity4() {
+        assert_eq(
+            r"(\x . \y . x x y) x",
+            a(l("x", l("y", a("x", a("x", "y")))), "x")
         );
     }
 }
