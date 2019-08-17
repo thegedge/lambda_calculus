@@ -1,0 +1,19 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{
+  "/*" ~ (!"*/" ~ ANY)* ~ "*/"
+  | "//" ~ ANY+ ~ "\n"
+}
+
+LAMBDA = _{ "λ" | "\\" }
+DOT = _{ "." }
+OPEN_PAREN = _{ "(" }
+CLOSE_PAREN = _{ ")" }
+
+main = { SOI ~ term ~ EOI }
+
+simple_term = { abstraction | variable }
+
+variable = { LETTER+ }
+abstraction = { LAMBDA ~ variable ~ DOT ~ term+ }
+application = @{ simple_term ~ (WHITESPACE+ ~ term)* }
+term = { OPEN_PAREN? ~ (simple_term | application) ~ CLOSE_PAREN? }
