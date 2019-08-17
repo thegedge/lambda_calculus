@@ -11,9 +11,16 @@ CLOSE_PAREN = _{ ")" }
 
 main = { SOI ~ term ~ EOI }
 
-simple_term = { abstraction | variable }
+variable = @{ LETTER+ }
+abstraction = { LAMBDA ~ variable ~ DOT ~ term }
+application = {
+  variable ~ term
+  | OPEN_PAREN ~ term ~ CLOSE_PAREN ~ term
+}
 
-variable = { LETTER+ }
-abstraction = { LAMBDA ~ variable ~ DOT ~ term+ }
-application = @{ simple_term ~ (WHITESPACE+ ~ term)* }
-term = { OPEN_PAREN? ~ (simple_term | application) ~ CLOSE_PAREN? }
+term = {
+  application
+  | abstraction
+  | variable
+  | OPEN_PAREN ~ term ~ CLOSE_PAREN
+}
