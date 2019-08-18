@@ -1,12 +1,9 @@
 #![feature(box_syntax, box_patterns)]
 
-extern crate pest;
-#[macro_use] extern crate pest_derive;
-#[macro_use] extern crate failure;
-
 use std::io::{self, Read};
 
 mod parser;
+mod vars;
 
 fn main() -> Result<(), failure::Error> {
     let mut text = String::new();

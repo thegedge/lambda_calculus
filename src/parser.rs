@@ -2,7 +2,13 @@ use std::fmt;
 
 use pest::{
     Parser,
-    iterators::Pair,
+    iterators::Pair
+};
+
+use pest_derive::Parser;
+
+use failure::{
+    Fail,
 };
 
 #[derive(Parser)]
@@ -21,18 +27,18 @@ enum ParseError {
     Unknown(&'static str),
 }
 
-#[derive(PartialEq)]
-pub enum Term<'s> {
-    Variable(&'s str),
-    Abstraction(&'s str, Box<Term<'s>>),
-    Application(Box<Term<'s>>, Box<Term<'s>>),
+#[derive(Clone, PartialEq)]
+pub enum Term {
+    Variable(String),
+    Abstraction(String, Box<Term>),
+    Application(Box<Term>, Box<Term>),
 }
 
-impl <'s> fmt::Display for Term<'s> {
+impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Term::Variable(s) => write!(f, "{}", s),
-            Term::Abstraction(s, t) => write!(f, "λ{}.({})", s, t),
+            Term::Abstraction(s, t) => write!(f, "λ{}.{}", s, t),
             Term::Application(box Term::Variable(t1), box Term::Variable(t2)) => write!(f, "{} {}", t1, t2),
             Term::Application(box Term::Variable(t1), t2) => write!(f, "{} ({})", t1, t2),
             Term::Application(t1, box Term::Variable(t2)) => write!(f, "({}) {}", t1, t2),
@@ -41,13 +47,13 @@ impl <'s> fmt::Display for Term<'s> {
     }
 }
 
-impl <'s> fmt::Debug for Term<'s> {
+impl fmt::Debug for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-pub fn parse<'s>(text: &'s str) -> Result<Term<'s>, failure::Error> {
+pub fn parse(text: &str) -> Result<Term, failure::Error> {
     let pair = LambdaCalculusParser::parse(Rule::main, &text)
         .map_err(|e| ParseError::PestError(e))
         .map(|mut pairs| pairs.next())?;
@@ -56,26 +62,29 @@ pub fn parse<'s>(text: &'s str) -> Result<Term<'s>, failure::Error> {
     Ok(result)
 }
 
-pub fn l<'s, T>(name: &'s str, body: T) -> Term<'s>
-    where T: Into<Term<'s>>
+pub fn l<S, T>(name: S, body: T) -> Term
+    where S: Into<String>,
+          T: Into<Term>
 {
-    Term::Abstraction(name, Box::new(body.into()))
+    Term::Abstraction(name.into(), Box::new(body.into()))
 }
 
-pub fn a<'s, T1, T2>(a: T1, b: T2) -> Term<'s>
-    where T1: Into<Term<'s>>,
-          T2: Into<Term<'s>>
+pub fn a<T1, T2>(a: T1, b: T2) -> Term
+    where T1: Into<Term>,
+          T2: Into<Term>
 {
     Term::Application(Box::new(a.into()), Box::new(b.into()))
 }
 
-pub fn v<'s>(name: &'s str) -> Term<'s> {
-    Term::Variable(name)
+pub fn v<T: Into<String>>(name: T) -> Term {
+    Term::Variable(name.into())
 }
 
-impl <'s> From<&'s str> for Term<'s> {
-    fn from(s: &str) -> Term {
-        Term::Variable(s)
+impl <T> From<T> for Term
+    where T: Into<String>
+{
+    fn from(s: T) -> Term {
+        Term::Variable(s.into())
     }
 }
 
@@ -85,12 +94,12 @@ fn pest_to_term(pair: Pair<Rule>) -> Result<Term, ParseError> {
             pest_to_term(pair.into_inner().next().ok_or(ParseError::Unknown("main|term|simple_term"))?)
         },
         Rule::variable => {
-            Ok(Term::Variable(pair.as_str()))
+            Ok(Term::Variable(pair.as_str().to_string()))
         },
         Rule::abstraction => {
             let mut pairs = pair.into_inner();
             Ok(Term::Abstraction(
-                pairs.next().map(|p| p.as_str()).ok_or(ParseError::Unknown("abstraction[0]"))?,
+                pairs.next().map(|p| p.as_str().to_string()).ok_or(ParseError::Unknown("abstraction[0]"))?,
                 Box::new(pairs.next().ok_or(ParseError::Unknown("abstraction[1]")).map(pest_to_term)??)
             ))
         },
@@ -109,7 +118,7 @@ fn pest_to_term(pair: Pair<Rule>) -> Result<Term, ParseError> {
 mod tests {
     use super::*;
 
-    fn assert_eq<'s>(code: &'s str, expected: Term<'s>) {
+    fn assert_eq(code: &str, expected: Term) {
         assert_eq!(expected, parse(code).unwrap(), "input program: {}", code);
     }
 
