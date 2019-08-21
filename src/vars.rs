@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use crate::parser::Term;
 
 /// A trait for computing free variables on an expression.
-trait Variables {
+pub trait Variables {
     /// Returns the free variables in a term.
     fn free_variables(&self) -> HashSet<String>;
 }

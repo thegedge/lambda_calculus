@@ -3,6 +3,7 @@
 use std::io::{self, Read};
 
 mod parser;
+mod substitution;
 mod vars;
 
 fn main() -> Result<(), failure::Error> {
