@@ -33,12 +33,12 @@ impl Variables for Term {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{l, a, v};
+    use crate::parser::parse;
 
-    fn assert_fvs_same(expected: Vec<&str>, t: Term) {
+    fn assert_fvs_same(expected: Vec<&str>, t: &str) {
         assert_eq!(
             expected.into_iter().map(str::to_string).collect::<HashSet<_>>(),
-            t.free_variables()
+            parse(t).unwrap().free_variables()
         );
     }
 
@@ -46,7 +46,7 @@ mod tests {
     fn test_with_variable() {
         assert_fvs_same(
             vec!["x"],
-            v("x")
+            "x"
         );
     }
 
@@ -54,7 +54,7 @@ mod tests {
     fn test_with_abstraction() {
         assert_fvs_same(
             vec!["y"],
-            l("x", a("x", "y"))
+            r"\x.x y"
         );
     }
 
@@ -62,7 +62,7 @@ mod tests {
     fn test_with_application() {
         assert_fvs_same(
             vec!["x", "y"],
-            a("x", "y")
+            "x y"
         );
     }
 
@@ -70,7 +70,7 @@ mod tests {
     fn test_with_nested_abstraction() {
         assert_fvs_same(
             vec!["z"],
-            l("x", l("y", a("x", a("y", "z"))))
+            r"\x.\y.x y z"
         );
     }
 }

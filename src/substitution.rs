@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use crate::parser::Term;
 use crate::vars::Variables;
 
-const PRIME: &str = "′";
+const PRIME: &str = "'";
 
 /// An expression that can be substituted with another expression
 pub trait Substitutable {
@@ -87,108 +87,85 @@ fn rewrite<T: Into<String>>(name: T, term: &Term) -> Term {
 
 #[cfg(test)]
 mod tests {
-    use super::PRIME;
     use super::*;
-    use crate::parser::{l, a, v};
+    use crate::parser::parse;
 
-    fn prime(s: &str) -> String {
-        s.to_string() + PRIME
+    fn assert_substitutes_to(expected: &str, expr: &str, subs: &str, var: &str) {
+        assert_eq!(
+            parse(expected).unwrap(),
+            parse(expr).unwrap().substitute(var, &parse(subs).unwrap())
+        )
     }
 
     #[test]
     fn test_variable_with_same_name() {
-        assert_eq!(
-            v("y"),
-            v("x").substitute("x", &v("y"))
-        )
+        assert_substitutes_to("y", "x", "y", "x");
     }
 
     #[test]
     fn test_variable_with_different_name() {
-        assert_eq!(
-            v("x"),
-            v("x").substitute("y", &v("z"))
-        )
+        assert_substitutes_to("x", "x", "z", "y");
     }
 
     #[test]
     fn test_application_with_overlapping_name() {
-        assert_eq!(
-            a("x", "z"),
-            a("x", "y").substitute("y", &v("z"))
-        )
+        assert_substitutes_to("x z", "x y", "z", "y");
     }
 
     #[test]
     fn test_application_with_none_same_name() {
-        assert_eq!(
-            a("x", "y"),
-            a("x", "y").substitute("a", &v("z"))
-        )
+        assert_substitutes_to("x y", "x y", "z", "a");
     }
 
     #[test]
     fn test_abstraction_with_bound_name_different() {
-        assert_eq!(
-            l("x", "z"),
-            l("x", "y").substitute("y", &v("z"))
-        )
+        assert_substitutes_to("x z", "x y", "z", "y");
     }
 
     #[test]
     fn test_abstraction_with_bound_name_same() {
-        assert_eq!(
-            l(prime("x"), a("y", "y")),
-            l("x", a("x", "y")).substitute("x", &v("y"))
-        )
+        assert_substitutes_to(r"\x'.y y", r"\x.x y", "y", "x");
     }
 
     #[test]
     fn test_abstraction_with_bound_name_in_free_variables_of_substitute() {
-        assert_eq!(
-            l(prime("x"), a(l("y", a("x", "y")), "y")),
-            l("x", a("x", "y")).substitute("x", &l("y", a("x", "y")))
-        )
+        assert_substitutes_to(
+            r"\x'.(\y.x y) y",
+            r"\x.x y",
+            r"\y.x y",
+            "x"
+        );
     }
 
     mod rewrite {
-        use super::prime;
         use super::super::*;
-        use crate::parser::{l, a, v};
+        use crate::parser::parse;
+
+        fn assert_rewrites_to(expected: &str, expr: &str, var: &str) {
+            assert_eq!(
+                parse(expected).unwrap(),
+                rewrite(var, &parse(expr).unwrap())
+            );
+        }
 
         #[test]
         fn test_with_variable() {
-            assert_eq!(
-                v("x"),
-                rewrite("x", &v("x"))
-            )
+            assert_rewrites_to("x", "x", "x");
         }
 
         #[test]
         fn test_with_application() {
-            assert_eq!(
-                a("x", "y"),
-                rewrite("x", &a("x", "y"))
-            )
+            assert_rewrites_to("x y", "x y", "x");
         }
 
         #[test]
         fn test_simple_abstraction() {
-            assert_eq!(
-                l(prime("x"), a(prime("x"), "y")),
-                rewrite("x", &l("x", a("x", "y")))
-            )
+            assert_rewrites_to(r"\x' . x' y", r"\x.x y", "x")
         }
 
         #[test]
         fn test_nested_abstraction_with_same_bound_variable_name() {
-            let x_p = prime("x");
-            let x_pp = prime(&prime("x"));
-            assert_eq!(
-                l(x_p.clone(), a(x_p.clone(), l("y", a("y", l(x_pp.clone(), x_pp.clone()))))),
-                rewrite("x", &l("x", a("x", l("y", a("y", l("x", "x"))))))
-            )
+            assert_rewrites_to(r"\x' . x' \y . y \x''.x''", r"\x.x \y.y \x.x", "x");
         }
     }
-
 }

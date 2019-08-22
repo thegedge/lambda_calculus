@@ -29,7 +29,7 @@ impl Reduction for Full {
                 let t2_reduced = self.reduce(t2);
                 match t1_reduced {
                     Term::Abstraction(name, body) => {
-                        self.reduce(&body.substitute(name, &t2_reduced))
+                        self.reduce(&body.substitute(name.as_str(), &t2_reduced))
                     },
                     _ => {
                         Term::Application(box t1_reduced, box t2_reduced)
@@ -42,69 +42,53 @@ impl Reduction for Full {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{l, a, v};
+    use crate::parser::parse;
     use super::*;
 
-    fn assert_reduces_to(expected: Term, expr: Term) {
+    fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
-            expected,
-            Full::new().reduce(&expr)
+            parse(expected).unwrap(),
+            Full::new().reduce(&parse(expr).unwrap())
         )
     }
 
     #[test]
     pub fn test_does_not_reduce_variable() {
-        assert_reduces_to(
-            v("x"),
-            v("x")
-        );
+        assert_reduces_to("x", "x");
     }
 
     #[test]
     pub fn test_does_not_reduce_simple_abstraction() {
-        assert_reduces_to(
-            l("x", "x"),
-            l("x", "x")
-        );
+        assert_reduces_to(r"\x.x", r"\x.x");
     }
 
     #[test]
     pub fn test_does_not_reduce_simple_application() {
-        assert_reduces_to(
-            a("x", l("y", "y")),
-            a("x", l("y", "y"))
-        );
+        assert_reduces_to(r"x \y.y", r"x \y.y");
     }
 
     #[test]
     pub fn test_reduces_inside_abstraction() {
-        assert_reduces_to(
-            l("x", a("z", "x")),
-            l("x", a(a(l("y", "y"), "z"), "x"))
-        );
+        assert_reduces_to(r"\x.z x", r"\x.((\y.y) z) x");
     }
 
     #[test]
     pub fn test_reduces_simple_application() {
-        assert_reduces_to(
-            v("x"),
-            a(l("y", "y"), "x")
-        );
+        assert_reduces_to(r"x", r"(\y.y) x");
     }
 
     #[test]
-    pub fn test_reduces_complex_application() {
-        assert_reduces_to(
-            l("z", "z"),
-            a(l("y", "y"), l("z", "z"))
-        );
+    pub fn test_reduces_application_with_lambda_argument() {
+        assert_reduces_to(r"\z.z", r"(\y.y) \z.z");
     }
 
     #[test]
-    pub fn test_reduce_with_overlapping_variables() {
-        assert_reduces_to(
-            l("z", "z"),
-            a(l("y", "y"), l("z", "z"))
-        );
+    pub fn test_reduces_application_fully1() {
+        assert_reduces_to(r"z", r"(\x.x z) \z.z");
+    }
+
+    #[test]
+    pub fn test_reduces_application_fully2() {
+        assert_reduces_to(r"z \z.z", r"((\x.x) z) \z.z");
     }
 }

@@ -49,7 +49,11 @@ impl fmt::Display for Term {
 
 impl fmt::Debug for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        match self {
+            Term::Variable(s) => write!(f, "{:?}", s),
+            Term::Abstraction(s, t) => write!(f, "l({:?}, {:?})", s, t),
+            Term::Application(t1, t2) => write!(f, "a({:?}, {:?})", t1, t2),
+        }
     }
 }
 
@@ -183,6 +187,14 @@ mod tests {
         assert_eq(
             r"(\x . \y . x x y) x",
             a(l("x", l("y", a("x", a("x", "y")))), "x")
+        );
+    }
+
+    #[test]
+    pub fn test_parses_with_complex_application() {
+        assert_eq(
+            r"(\y.y z) \z.z",
+            a(l("y", a("y", "z")), l("z", "z"))
         );
     }
 }

@@ -8,10 +8,11 @@ LAMBDA = _{ "λ" | "\\" }
 DOT = _{ "." }
 OPEN_PAREN = _{ "(" }
 CLOSE_PAREN = _{ ")" }
+VARIABLE_CHAR = _{ LETTER | "'" }
 
 main = { SOI ~ term ~ EOI }
 
-variable = @{ LETTER+ }
+variable = @{ VARIABLE_CHAR+ }
 abstraction = { LAMBDA ~ variable ~ DOT ~ term }
 application = {
   variable ~ term
