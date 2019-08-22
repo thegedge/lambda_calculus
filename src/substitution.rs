@@ -7,7 +7,7 @@ use crate::vars::Variables;
 const PRIME: &str = "′";
 
 /// An expression that can be substituted with another expression
-trait Substitutable {
+pub trait Substitutable {
     /// Returns the free variables in a term.
     fn substitute<T>(&self, var: T, substitution: &Term) -> Self
         where T: Borrow<str>;
