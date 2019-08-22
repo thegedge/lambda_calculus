@@ -1,4 +1,6 @@
 //! Full beta reduction strategy
+//!
+//! This strategy can reduce any term at any point.
 use crate::parser::Term;
 use crate::substitution::Substitutable;
 
@@ -17,9 +19,6 @@ impl Reduction for Full {
 
     fn reduce(&self, term: &Self::Term) -> Self::Term {
         match term {
-            Term::Variable(_) => {
-                term.clone()
-            },
             Term::Abstraction(s, t) => {
                 Term::Abstraction(s.clone(), box self.reduce(t))
             },
@@ -33,6 +32,9 @@ impl Reduction for Full {
                 let t1_reduced = self.reduce(t1);
                 let t2_reduced = self.reduce(t2);
                 self.reduce(&Term::Application(box t1_reduced, box t2_reduced))
+            },
+            _ => {
+                term.clone()
             },
         }
     }
@@ -78,6 +80,11 @@ mod tests {
     #[test]
     pub fn test_reduces_application_with_lambda_argument() {
         assert_reduces_to(r"\z.z", r"(\y.y) \z.z");
+    }
+
+    #[test]
+    pub fn test_reduces_application_with_variable() {
+        assert_reduces_to(r"z \z.z", r"z (\x.x) (\z.z)");
     }
 
     #[test]

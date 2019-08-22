@@ -1,36 +1,37 @@
-//! Normal order reduction strategy
+//! Call by value reduction strategy
 //!
-//! This strategy will reduce the left and outermost terms first.
+//! This strategy reduces the outermost terms, but only after the right-hand side has been reduced
+//! to a value (abstractions in a simple calculus).
 use crate::parser::Term;
 use crate::substitution::Substitutable;
 
 use super::Reduction;
 
-pub struct Normal;
+pub struct CallByValue;
 
-impl Normal {
-    pub fn new() -> Normal {
-        Normal {}
+impl CallByValue {
+    pub fn new() -> CallByValue {
+        CallByValue {}
     }
 }
 
-impl Reduction for Normal {
+impl Reduction for CallByValue {
     type Term = Term;
 
     fn reduce(&self, term: &Self::Term) -> Self::Term {
         match term {
-            Term::Abstraction(s, t) => {
-                Term::Abstraction(s.clone(), box self.reduce(t))
-            },
             Term::Application(box Term::Variable(s), t2) => {
+                // TODO could this be made part of the catchall without a stack overflow? Perhaps
+                // have a way to check if a value can be reduced?
                 Term::Application(box Term::Variable(s.clone()), box self.reduce(t2))
             },
-            Term::Application(box Term::Abstraction(name, body), box t2) => {
-                self.reduce(&body.substitute(name.as_str(), t2))
-            }
+            Term::Application(box Term::Abstraction(name, body), t) => {
+                let t_reduced = self.reduce(t);
+                self.reduce(&body.substitute(name.as_str(), &t_reduced))
+            },
             Term::Application(t1, t2) => {
                 let t1_reduced = self.reduce(t1);
-                Term::Application(box t1_reduced, t2.clone())
+                self.reduce(&Term::Application(box t1_reduced, t2.clone()))
             },
             _ => {
                 term.clone()
@@ -47,7 +48,7 @@ mod tests {
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
             parse(expected).unwrap(),
-            Normal::new().reduce(&parse(expr).unwrap())
+            CallByValue::new().reduce(&parse(expr).unwrap())
         )
     }
 
@@ -67,8 +68,8 @@ mod tests {
     }
 
     #[test]
-    pub fn test_reduces_inside_abstraction() {
-        assert_reduces_to(r"\x.z x", r"\x.((\y.y) z) x");
+    pub fn test_does_not_reduce_inside_abstraction() {
+        assert_reduces_to(r"\x.(\y.y) z", r"\x.(\y.y) z");
     }
 
     #[test]
