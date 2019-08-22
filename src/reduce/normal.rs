@@ -1,18 +1,18 @@
-//! Full beta reduction strategy
+//! Normal order reduction strategy
 use crate::parser::Term;
 use crate::substitution::Substitutable;
 
 use super::Reduction;
 
-pub struct Full;
+pub struct Normal;
 
-impl Full {
-    pub fn new() -> Full {
-        Full {}
+impl Normal {
+    pub fn new() -> Normal {
+        Normal {}
     }
 }
 
-impl Reduction for Full {
+impl Reduction for Normal {
     type Term = Term;
 
     fn reduce(&self, term: &Self::Term) -> Self::Term {
@@ -26,13 +26,12 @@ impl Reduction for Full {
             Term::Application(box Term::Variable(s), t2) => {
                 Term::Application(box Term::Variable(s.clone()), box self.reduce(t2))
             },
-            Term::Application(box Term::Abstraction(name, body), t) => {
-                self.reduce(&body.substitute(name.as_str(), &t))
-            },
+            Term::Application(box Term::Abstraction(name, body), box t2) => {
+                self.reduce(&body.substitute(name.as_str(), t2))
+            }
             Term::Application(t1, t2) => {
                 let t1_reduced = self.reduce(t1);
-                let t2_reduced = self.reduce(t2);
-                self.reduce(&Term::Application(box t1_reduced, box t2_reduced))
+                Term::Application(box t1_reduced, t2.clone())
             },
         }
     }
@@ -46,7 +45,7 @@ mod tests {
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
             parse(expected).unwrap(),
-            Full::new().reduce(&parse(expr).unwrap())
+            Normal::new().reduce(&parse(expr).unwrap())
         )
     }
 

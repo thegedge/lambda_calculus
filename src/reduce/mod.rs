@@ -3,8 +3,10 @@
 //! An expression of the form `(\x.t1) t2` is reducible, and known as a redex.
 
 mod full;
+mod normal;
 
 pub use full::Full;
+pub use normal::Normal;
 
 /// Use the call by name reduction strategy.
 ///
