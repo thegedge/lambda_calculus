@@ -26,8 +26,7 @@ impl Substitutable for Term {
                 }
             },
             Term::Abstraction(name, box t) => {
-                if name == var.borrow() || t.free_variables().contains(name) {
-                    println!("{} :: {} -> {} :: {:?}", self, var.borrow(), substitution, t.free_variables());
+                if name == var.borrow() || substitution.free_variables().contains(name) {
                     Term::Abstraction(
                         name.clone() + PRIME,
                         box rewrite(name, t).substitute(var.borrow(), substitution)
@@ -135,6 +134,16 @@ mod tests {
             r"\x.x y",
             r"\y.x y",
             "x"
+        );
+    }
+
+    #[test]
+    fn test_free_variable_replaced_in_abstraction_body() {
+        assert_substitutes_to(
+            r"\b.x b",
+            r"\b.a b",
+            r"x",
+            "a"
         );
     }
 
