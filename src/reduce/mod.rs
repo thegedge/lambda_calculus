@@ -15,7 +15,7 @@ pub use normal::Normal;
 // TODO for all strategies, have tests to ensure evaluation happens as expected.
 
 /// A beta reduction strategy.
-trait Reduction {
+pub trait Reduction {
     type Term;
 
     /// Reduce a given term

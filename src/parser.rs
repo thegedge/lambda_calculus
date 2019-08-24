@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    collections::HashMap,
+    fmt,
+};
 
 use pest::{
     Parser,
@@ -13,7 +16,9 @@ use failure::{
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
-struct LambdaCalculusParser;
+struct LambdaCalculusParser<'p> {
+    macros: HashMap<&'p str, Term>,
+}
 
 #[derive(Debug, Fail)]
 enum ParseError {
@@ -57,15 +62,6 @@ impl fmt::Debug for Term {
     }
 }
 
-pub fn parse(text: &str) -> Result<Term, failure::Error> {
-    let pair = LambdaCalculusParser::parse(Rule::main, &text)
-        .map_err(|e| ParseError::PestError(e))
-        .map(|mut pairs| pairs.next())?;
-
-    let result = pest_to_term(pair.ok_or(ParseError::EmptyInput)?)?;
-    Ok(result)
-}
-
 pub fn l<S, T>(name: S, body: T) -> Term
     where S: Into<String>,
           T: Into<Term>
@@ -92,29 +88,85 @@ impl <T> From<T> for Term
     }
 }
 
-fn pest_to_term(pair: Pair<Rule>) -> Result<Term, ParseError> {
-    match pair.as_rule() {
-        Rule::main | Rule::term => {
-            pest_to_term(pair.into_inner().next().ok_or(ParseError::Unknown("main|term|simple_term"))?)
-        },
-        Rule::variable => {
-            Ok(Term::Variable(pair.as_str().to_string()))
-        },
-        Rule::abstraction => {
-            let mut pairs = pair.into_inner();
-            Ok(Term::Abstraction(
-                pairs.next().map(|p| p.as_str().to_string()).ok_or(ParseError::Unknown("abstraction[0]"))?,
-                Box::new(pairs.next().ok_or(ParseError::Unknown("abstraction[1]")).map(pest_to_term)??)
-            ))
-        },
-        Rule::application => {
-            let mut pairs = pair.into_inner();
-            Ok(Term::Application(
-                Box::new(pairs.next().ok_or(ParseError::Unknown("application[0]")).map(pest_to_term)??),
-                Box::new(pairs.next().ok_or(ParseError::Unknown("application[1]")).map(pest_to_term)??)
-            ))
-        },
-        rule => unreachable!("{:?}", rule),
+pub fn parse(text: &str) -> Result<Term, failure::Error> {
+    let pair = LambdaCalculusParser::parse(Rule::main, &text)
+        .map_err(|e| ParseError::PestError(e))
+        .map(|mut pairs| pairs.next())?;
+
+    let result = LambdaCalculusParser::new().pest_to_term(pair.ok_or(ParseError::EmptyInput)?)?;
+    Ok(result)
+}
+
+impl <'p> LambdaCalculusParser<'p> {
+    fn new() -> LambdaCalculusParser<'p> {
+        LambdaCalculusParser {
+            macros: HashMap::new(),
+        }
+    }
+
+    fn pest_to_term(&mut self, pair: Pair<'p, Rule>) -> Result<Term, ParseError> {
+        match pair.as_rule() {
+            Rule::main => {
+                let mut pairs = pair.into_inner();
+                pairs.next()
+                     .ok_or(ParseError::Unknown("main"))
+                     .and_then(|t| self.read_macros(t))?;
+
+                self.pest_to_term(pairs.next().ok_or(ParseError::Unknown("main|term|simple_term"))?)
+            },
+            Rule::term => {
+                self.pest_to_term(pair.into_inner().next().ok_or(ParseError::Unknown("term"))?)
+            },
+            Rule::variable => {
+                let name = pair.as_str();
+                Ok(
+                    self.macros.get(name)
+                               .map(|t| t.clone())
+                               .unwrap_or_else(|| Term::Variable(name.to_string()))
+                )
+            },
+            Rule::abstraction => {
+                let mut pairs = pair.into_inner();
+                Ok(Term::Abstraction(
+                    pairs.next().map(|p| p.as_str().to_string()).ok_or(ParseError::Unknown("abstraction[0]"))?,
+                    Box::new(
+                        pairs.next()
+                             .ok_or(ParseError::Unknown("abstraction[1]"))
+                             .map(|t| self.pest_to_term(t))??
+                    )
+                ))
+            },
+            Rule::application => {
+                let mut pairs = pair.into_inner();
+                Ok(Term::Application(
+                    Box::new(
+                        pairs.next()
+                             .ok_or(ParseError::Unknown("application[0]"))
+                             .map(|t| self.pest_to_term(t))??
+                    ),
+                    Box::new(
+                        pairs.next()
+                             .ok_or(ParseError::Unknown("application[1]"))
+                             .map(|t| self.pest_to_term(t))??
+                    )
+                ))
+            },
+            rule => unreachable!("{:?}", rule),
+        }
+    }
+
+    fn read_macros(&mut self, pair: Pair<'p, Rule>) -> Result<(), ParseError> {
+        Ok(for macro_term in pair.into_inner() {
+            let mut pairs = macro_term.into_inner();
+            pairs.next()
+                 .ok_or(ParseError::Unknown("macro name"))
+                 .map(|t| t.as_str())
+                 .and_then(|name| {
+                     let macro_body = self.pest_to_term(pairs.next().ok_or(ParseError::Unknown("macro body"))?)?;
+                     self.macros.insert(name, macro_body);
+                     Ok(())
+                 })?;
+        })
     }
 }
 
@@ -195,6 +247,22 @@ mod tests {
         assert_eq(
             r"(\y.y z) \z.z",
             a(l("y", a("y", "z")), l("z", "z"))
+        );
+    }
+
+    #[test]
+    pub fn test_parses_with_whitespace_at_end() {
+        assert_eq(
+            "\\x . \\y . (x x) y  \t \r  \n",
+            l("x", l("y", a(a("x", "x"), "y")))
+        );
+    }
+
+    #[test]
+    pub fn test_parses_and_substitutes_macro() {
+        assert_eq(
+            r"id = \x.x; id (id y)",
+            a(l("x", "x"), a(l("x", "x"), "y"))
         );
     }
 }

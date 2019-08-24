@@ -1,25 +1,51 @@
-WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+WHITESPACE = _{ "\n" | "\t" | "\r" | SEPARATOR }
 COMMENT = _{
   "/*" ~ (!"*/" ~ ANY)* ~ "*/"
   | "//" ~ ANY+ ~ "\n"
 }
 
-LAMBDA = _{ "λ" | "\\" }
 DOT = _{ "." }
+LAMBDA = _{ "λ" | "\\" }
+VARIABLE_CHAR = _{ LETTER | NUMBER | "_" | "'" }
+
 OPEN_PAREN = _{ "(" }
 CLOSE_PAREN = _{ ")" }
-VARIABLE_CHAR = _{ LETTER | "'" }
 
-main = { SOI ~ term ~ EOI }
+MACRO_START = _{ "=" }
+MACRO_END = _{ ";" }
 
-variable = @{ VARIABLE_CHAR+ }
-abstraction = { LAMBDA ~ variable ~ DOT ~ term }
-application = {
+main = {
+  SOI ~ macros ~ term ~ EOI
+}
+
+// The preamble specifies shortand for expressions that can be reused.
+macros = {
+  macro_*
+}
+
+macro_ = {
+  variable ~ MACRO_START ~ term ~ MACRO_END
+}
+
+// This is essentially
+//
+//   term = ( term ) | variable | abstraction | term term
+//
+// with the left recursion removed.
+variable = @{
+  VARIABLE_CHAR+
+}
+
+abstraction = !{
+  LAMBDA ~ variable ~ DOT ~ term
+}
+
+application = !{
   variable ~ term
   | OPEN_PAREN ~ term ~ CLOSE_PAREN ~ term
 }
 
-term = {
+term = !{
   application
   | abstraction
   | variable

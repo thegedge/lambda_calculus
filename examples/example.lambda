@@ -1,1 +1,5 @@
-λx . λy . (x x) y
+tru = \t.\f. t;
+fls = \t.\f. f;
+and = \a.\b. a b fls;
+
+and tru tru
