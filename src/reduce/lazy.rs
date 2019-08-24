@@ -22,14 +22,9 @@ impl Reduction for Lazy {
             Term::Application(box Term::Abstraction(name, body), t) => {
                 self.reduce(&body.substitute(name.as_str(), &t))
             },
-            Term::Application(t1, t2) => {
+            Term::Application(t1, t2) if t1.is_redex() => {
                 let t1_reduced = self.reduce(t1);
-
-                // Check if we have a redex
-                match t1_reduced {
-                    Term::Abstraction(_, _) => self.reduce(&Term::Application(box t1_reduced, t2.clone())),
-                    _ => Term::Application(box t1_reduced, t2.clone()),
-                }
+                self.reduce(&Term::Application(box t1_reduced, t2.clone()))
             },
             _ => {
                 term.clone()

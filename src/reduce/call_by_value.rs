@@ -20,18 +20,16 @@ impl Reduction for CallByValue {
 
     fn reduce(&self, term: &Self::Term) -> Self::Term {
         match term {
-            Term::Application(box Term::Abstraction(name, body), arg) => {
-                let arg_reduced = self.reduce(arg);
-                self.reduce(&body.substitute(name.as_str(), &arg_reduced))
-            },
-            Term::Application(t1, t2) => {
+            Term::Application(t1, t2) if t1.is_redex() => {
                 let t1_reduced = self.reduce(t1);
-
-                // Check if we have a redex
-                match t1_reduced {
-                    Term::Abstraction(_, _) => self.reduce(&Term::Application(box t1_reduced, t2.clone())),
-                    _ => Term::Application(box t1_reduced, t2.clone()),
-                }
+                self.reduce(&Term::Application(box t1_reduced, t2.clone()))
+            },
+            Term::Application(t1, t2) if t2.is_redex() => {
+                let t2_reduced = self.reduce(t2);
+                self.reduce(&Term::Application(t1.clone(), box t2_reduced))
+            },
+            Term::Application(box Term::Abstraction(name, body), arg) => {
+                self.reduce(&body.substitute(name.as_str(), &arg))
             },
             _ => {
                 term.clone()

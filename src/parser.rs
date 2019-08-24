@@ -39,6 +39,15 @@ pub enum Term {
     Application(Box<Term>, Box<Term>),
 }
 
+impl Term {
+    pub fn is_redex(&self) -> bool {
+        match self {
+            Term::Application(box Term::Abstraction(_, _), _) => true,
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
