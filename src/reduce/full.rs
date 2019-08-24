@@ -31,7 +31,12 @@ impl Reduction for Full {
             Term::Application(t1, t2) => {
                 let t1_reduced = self.reduce(t1);
                 let t2_reduced = self.reduce(t2);
-                self.reduce(&Term::Application(box t1_reduced, box t2_reduced))
+
+                // Check if we have a redex
+                match t1_reduced {
+                    Term::Abstraction(_, _) => self.reduce(&Term::Application(box t1_reduced, box t2_reduced)),
+                    _ => Term::Application(box t1_reduced, box t2_reduced),
+                }
             },
             _ => {
                 term.clone()
@@ -83,8 +88,8 @@ mod tests {
     }
 
     #[test]
-    pub fn test_reduces_application_with_variable() {
-        assert_reduces_to(r"z \z.z", r"z (\x.x) (\z.z)");
+    pub fn test_does_not_reduce_application_with_variable_on_left() {
+        assert_reduces_to(r"z (\x.x) (\z.z)", r"z (\x.x) (\z.z)");
     }
 
     #[test]

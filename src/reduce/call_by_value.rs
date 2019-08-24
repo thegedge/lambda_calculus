@@ -20,18 +20,18 @@ impl Reduction for CallByValue {
 
     fn reduce(&self, term: &Self::Term) -> Self::Term {
         match term {
-            Term::Application(box Term::Variable(s), t2) => {
-                // TODO could this be made part of the catchall without a stack overflow? Perhaps
-                // have a way to check if a value can be reduced?
-                Term::Application(box Term::Variable(s.clone()), box self.reduce(t2))
-            },
-            Term::Application(box Term::Abstraction(name, body), t) => {
-                let t_reduced = self.reduce(t);
-                self.reduce(&body.substitute(name.as_str(), &t_reduced))
+            Term::Application(box Term::Abstraction(name, body), arg) => {
+                let arg_reduced = self.reduce(arg);
+                self.reduce(&body.substitute(name.as_str(), &arg_reduced))
             },
             Term::Application(t1, t2) => {
                 let t1_reduced = self.reduce(t1);
-                self.reduce(&Term::Application(box t1_reduced, t2.clone()))
+
+                // Check if we have a redex
+                match t1_reduced {
+                    Term::Abstraction(_, _) => self.reduce(&Term::Application(box t1_reduced, t2.clone())),
+                    _ => Term::Application(box t1_reduced, t2.clone()),
+                }
             },
             _ => {
                 term.clone()
@@ -83,8 +83,8 @@ mod tests {
     }
 
     #[test]
-    pub fn test_reduces_application_with_variable() {
-        assert_reduces_to(r"z \z.z", r"z (\x.x) (\z.z)");
+    pub fn test_does_not_reduce_application_with_variable_on_left() {
+        assert_reduces_to(r"z (\x.x) (\z.z)", r"z (\x.x) (\z.z)");
     }
 
     #[test]
@@ -95,5 +95,10 @@ mod tests {
     #[test]
     pub fn test_reduces_application_fully2() {
         assert_reduces_to(r"z \z.z", r"((\x.x) z) \z.z");
+    }
+
+    #[test]
+    pub fn test_reduces_multi_argument_application() {
+        assert_reduces_to(r"a", r"(\t.\f.t) a b");
     }
 }

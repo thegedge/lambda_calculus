@@ -82,8 +82,8 @@ mod tests {
     }
 
     #[test]
-    pub fn test_reduces_application_with_variable() {
-        assert_reduces_to(r"z \z.z", r"z (\x.x) (\z.z)");
+    pub fn test_does_not_reduce_application_with_variable_on_left() {
+        assert_reduces_to(r"z (\x.x) (\z.z)", r"z (\x.x) (\z.z)");
     }
 
     #[test]

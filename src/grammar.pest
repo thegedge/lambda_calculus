@@ -18,7 +18,10 @@ main = {
   SOI ~ macros ~ term ~ EOI
 }
 
-// The preamble specifies shortand for expressions that can be reused.
+// Macros are shortand for expressions that can be reused. Variables in a term
+// that share the name of a macro will be replaced by the right-hand side of
+// the macro.
+
 macros = {
   macro_*
 }
@@ -32,6 +35,7 @@ macro_ = {
 //   term = ( term ) | variable | abstraction | term term
 //
 // with the left recursion removed.
+
 variable = @{
   VARIABLE_CHAR+
 }
@@ -41,13 +45,18 @@ abstraction = !{
 }
 
 application = !{
-  variable ~ term
-  | OPEN_PAREN ~ term ~ CLOSE_PAREN ~ term
+  simple_term+
 }
 
 term = !{
   application
-  | abstraction
   | variable
+  | abstraction
+  | OPEN_PAREN ~ term ~ CLOSE_PAREN
+}
+
+simple_term = !{
+  variable
+  | abstraction
   | OPEN_PAREN ~ term ~ CLOSE_PAREN
 }

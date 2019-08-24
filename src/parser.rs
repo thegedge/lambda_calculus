@@ -114,7 +114,7 @@ impl <'p> LambdaCalculusParser<'p> {
 
                 self.pest_to_term(pairs.next().ok_or(ParseError::Unknown("main|term|simple_term"))?)
             },
-            Rule::term => {
+            Rule::term | Rule::simple_term => {
                 self.pest_to_term(pair.into_inner().next().ok_or(ParseError::Unknown("term"))?)
             },
             Rule::variable => {
@@ -138,18 +138,15 @@ impl <'p> LambdaCalculusParser<'p> {
             },
             Rule::application => {
                 let mut pairs = pair.into_inner();
-                Ok(Term::Application(
-                    Box::new(
+                let t1 =
                         pairs.next()
                              .ok_or(ParseError::Unknown("application[0]"))
-                             .map(|t| self.pest_to_term(t))??
-                    ),
-                    Box::new(
-                        pairs.next()
-                             .ok_or(ParseError::Unknown("application[1]"))
-                             .map(|t| self.pest_to_term(t))??
-                    )
-                ))
+                             .map(|t| self.pest_to_term(t))??;
+
+                pairs.try_fold(t1, |app, t| {
+                    let term = self.pest_to_term(t)?;
+                    Ok(Term::Application(box app, box term))
+                })
             },
             rule => unreachable!("{:?}", rule),
         }
@@ -195,18 +192,18 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parses_application_without_parentheses() {
+    pub fn test_parses_applications_without_parentheses_are_left_associative() {
         assert_eq(
             r"x y z",
-            a("x", a("y", "z"))
+            a(a("x", "y"), "z")
         );
     }
 
     #[test]
     pub fn test_parses_application_with_parentheses() {
         assert_eq(
-            r"(x y) z",
-            a(a("x", "y"), "z")
+            r"x (y z)",
+            a("x", a("y", "z"))
         );
     }
 
@@ -230,7 +227,7 @@ mod tests {
     pub fn test_parses_with_correct_associativity3() {
         assert_eq(
             r"\x . (\y . x x y) x",
-            l("x", a(l("y", a("x", a("x", "y"))), "x")),
+            l("x", a(l("y", a(a("x", "x"), "y")), "x")),
         );
     }
 
@@ -238,7 +235,7 @@ mod tests {
     pub fn test_parses_with_correct_associativity4() {
         assert_eq(
             r"(\x . \y . x x y) x",
-            a(l("x", l("y", a("x", a("x", "y")))), "x")
+            a(l("x", l("y", a(a("x", "x"), "y"))), "x")
         );
     }
 
