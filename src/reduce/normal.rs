@@ -28,9 +28,12 @@ impl Reduction for Normal {
             Term::Application(box Term::Abstraction(name, body), box t2) => {
                 self.reduce(&body.substitute(name.as_str(), t2))
             }
-            Term::Application(t1, t2) => {
+            Term::Application(box t1, box t2) if t1.is_redex() => {
                 let t1_reduced = self.reduce(t1);
-                Term::Application(box t1_reduced, t2.clone())
+                self.reduce(&Term::Application(box t1_reduced, box t2.clone()))
+            },
+            Term::Application(box t1, box t2) => {
+                Term::Application(box t1.clone(), box self.reduce(t2))
             },
             _ => {
                 term.clone()
@@ -41,13 +44,13 @@ impl Reduction for Normal {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse;
+    use crate::parser::parse_one;
     use super::*;
 
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
-            parse(expected).unwrap(),
-            Normal::new().reduce(&parse(expr).unwrap())
+            parse_one(expected).unwrap(),
+            Normal::new().reduce(&parse_one(expr).unwrap())
         )
     }
 

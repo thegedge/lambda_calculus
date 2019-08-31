@@ -4,20 +4,21 @@ use std::{
 };
 
 use pest::{
-    Parser,
+    Parser as PestParser,
     iterators::Pair
 };
-
-use pest_derive::Parser;
 
 use failure::{
     Fail,
 };
 
-#[derive(Parser)]
+#[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
-struct LambdaCalculusParser<'p> {
+struct LambdaCalculusParser;
+
+struct Parser<'p> {
     macros: HashMap<&'p str, Term>,
+    terms: Vec<Term>,
 }
 
 #[derive(Debug, Fail)]
@@ -43,6 +44,7 @@ impl Term {
     pub fn is_redex(&self) -> bool {
         match self {
             Term::Application(box Term::Abstraction(_, _), _) => true,
+            Term::Application(t, _) => t.is_redex(),
             _ => false,
         }
     }
@@ -97,34 +99,57 @@ impl <T> From<T> for Term
     }
 }
 
-pub fn parse(text: &str) -> Result<Term, failure::Error> {
-    let pair = LambdaCalculusParser::parse(Rule::main, &text)
-        .map_err(|e| ParseError::PestError(e))
-        .map(|mut pairs| pairs.next())?;
-
-    let result = LambdaCalculusParser::new().pest_to_term(pair.ok_or(ParseError::EmptyInput)?)?;
-    Ok(result)
+pub fn parse(text: &str) -> Result<Vec<Term>, failure::Error> {
+    let mut parser = Parser::new();
+    parser.parse(text)
 }
 
-impl <'p> LambdaCalculusParser<'p> {
-    fn new() -> LambdaCalculusParser<'p> {
-        LambdaCalculusParser {
+pub fn parse_one(text: &str) -> Result<Term, failure::Error> {
+    parse(text).map(|v| v[0].clone())
+}
+
+impl <'p> Parser<'p> {
+    pub fn new() -> Parser<'p> {
+        Parser {
             macros: HashMap::new(),
+            terms: Vec::new(),
         }
     }
 
-    fn pest_to_term(&mut self, pair: Pair<'p, Rule>) -> Result<Term, ParseError> {
-        match pair.as_rule() {
-            Rule::main => {
-                let mut pairs = pair.into_inner();
-                pairs.next()
-                     .ok_or(ParseError::Unknown("main"))
-                     .and_then(|t| self.read_macros(t))?;
+    pub fn parse(&mut self, text: &'p str) -> Result<Vec<Term>, failure::Error> {
+        let pair = LambdaCalculusParser::parse(Rule::main, &text)
+            .map_err(|e| ParseError::PestError(e))
+            .map(|mut pairs| pairs.next())?
+            .ok_or(ParseError::EmptyInput)?;
 
-                self.pest_to_term(pairs.next().ok_or(ParseError::Unknown("main|term|simple_term"))?)
+        self.process_pair(pair);
+        Ok(self.terms.clone())
+    }
+
+    fn process_pair(&mut self, pair: Pair<'p, Rule>) -> Result<(), ParseError> {
+        match pair.as_rule() {
+            Rule::main  => {
+                pair.into_inner().map(|p| self.process_pair(p)).collect()
             },
+            Rule::macro_ => {
+                self.read_macro(pair)
+            },
+            Rule::term => {
+                let term = self.process_term(pair)?;
+                self.terms.push(term);
+                Ok(())
+            },
+            Rule::EOI => {
+                Ok(())
+            },
+            rule => unreachable!("{:?}", rule),
+        }
+    }
+
+    fn process_term(&mut self, pair: Pair<'p, Rule>) -> Result<Term, ParseError> {
+        match pair.as_rule() {
             Rule::term | Rule::simple_term => {
-                self.pest_to_term(pair.into_inner().next().ok_or(ParseError::Unknown("term"))?)
+                self.process_term(pair.into_inner().next().ok_or(ParseError::Unknown("term"))?)
             },
             Rule::variable => {
                 let name = pair.as_str();
@@ -141,7 +166,7 @@ impl <'p> LambdaCalculusParser<'p> {
                     Box::new(
                         pairs.next()
                              .ok_or(ParseError::Unknown("abstraction[1]"))
-                             .map(|t| self.pest_to_term(t))??
+                             .map(|t| self.process_term(t))??
                     )
                 ))
             },
@@ -150,10 +175,10 @@ impl <'p> LambdaCalculusParser<'p> {
                 let t1 =
                         pairs.next()
                              .ok_or(ParseError::Unknown("application[0]"))
-                             .map(|t| self.pest_to_term(t))??;
+                             .map(|t| self.process_term(t))??;
 
                 pairs.try_fold(t1, |app, t| {
-                    let term = self.pest_to_term(t)?;
+                    let term = self.process_term(t)?;
                     Ok(Term::Application(box app, box term))
                 })
             },
@@ -161,18 +186,16 @@ impl <'p> LambdaCalculusParser<'p> {
         }
     }
 
-    fn read_macros(&mut self, pair: Pair<'p, Rule>) -> Result<(), ParseError> {
-        Ok(for macro_term in pair.into_inner() {
-            let mut pairs = macro_term.into_inner();
-            pairs.next()
-                 .ok_or(ParseError::Unknown("macro name"))
-                 .map(|t| t.as_str())
-                 .and_then(|name| {
-                     let macro_body = self.pest_to_term(pairs.next().ok_or(ParseError::Unknown("macro body"))?)?;
-                     self.macros.insert(name, macro_body);
-                     Ok(())
-                 })?;
-        })
+    fn read_macro(&mut self, pair: Pair<'p, Rule>) -> Result<(), ParseError> {
+        let mut pairs = pair.into_inner();
+        pairs.next()
+             .ok_or(ParseError::Unknown("macro name"))
+             .map(|t| t.as_str())
+             .and_then(|name| {
+                 let macro_body = self.process_term(pairs.next().ok_or(ParseError::Unknown("macro body"))?)?;
+                 self.macros.insert(name, macro_body);
+                 Ok(())
+             })
     }
 }
 
@@ -181,7 +204,12 @@ mod tests {
     use super::*;
 
     fn assert_eq(code: &str, expected: Term) {
-        assert_eq!(expected, parse(code).unwrap(), "input program: {}", code);
+        assert_eq!(
+            expected,
+            parse_one(code).unwrap(),
+            "input program: {}",
+            code
+        );
     }
 
     #[test]
@@ -265,10 +293,39 @@ mod tests {
     }
 
     #[test]
+    pub fn test_parses_with_empty_lines() {
+        assert_eq(
+            "a = b;\n\na",
+            v("b"),
+        );
+    }
+
+    #[test]
     pub fn test_parses_and_substitutes_macro() {
         assert_eq(
             r"id = \x.x; id (id y)",
             a(l("x", "x"), a(l("x", "x"), "y"))
+        );
+    }
+
+    #[test]
+    pub fn test_is_redex_true_for_abstraction_application() {
+        assert!(
+            a(l("x", "x"), "y").is_redex()
+        );
+    }
+
+    #[test]
+    pub fn test_is_redex_false_for_non_redex() {
+        assert!(
+            !a("y", l("x", "x")).is_redex()
+        );
+    }
+
+    #[test]
+    pub fn test_is_redex_true_for_nested_abstraction() {
+        assert!(
+            a(a(a(l("x", "x"), "a"), "b"), "c").is_redex()
         );
     }
 }

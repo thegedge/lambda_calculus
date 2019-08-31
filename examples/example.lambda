@@ -2,4 +2,7 @@ tru = \t.\f. t;
 fls = \t.\f. f;
 and = \a.\b. a b fls;
 
-and tru tru
+and tru tru;
+and tru fls;
+and fls tru;
+and fls fls;

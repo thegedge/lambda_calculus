@@ -26,7 +26,9 @@ impl Substitutable for Term {
                 }
             },
             Term::Abstraction(name, box t) => {
-                if name == var.borrow() || substitution.free_variables().contains(name) {
+                if name == var.borrow() {
+                    self.clone()
+                } else if substitution.free_variables().contains(name) {
                     Term::Abstraction(
                         name.clone() + PRIME,
                         box rewrite(name, t).substitute(var.borrow(), substitution)
@@ -81,19 +83,19 @@ impl Rewrite {
 fn rewrite<T: Into<String>>(name: T, term: &Term) -> Term {
     Rewrite {
         name: name.into(),
-        count: 0
+        count: 1
     }.rewrite(term)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use crate::parser::parse_one;
 
     fn assert_substitutes_to(expected: &str, expr: &str, subs: &str, var: &str) {
         assert_eq!(
-            parse(expected).unwrap(),
-            parse(expr).unwrap().substitute(var, &parse(subs).unwrap())
+            parse_one(expected).unwrap(),
+            parse_one(expr).unwrap().substitute(var, &parse_one(subs).unwrap())
         )
     }
 
@@ -124,16 +126,16 @@ mod tests {
 
     #[test]
     fn test_abstraction_with_bound_name_same() {
-        assert_substitutes_to(r"\x'.y y", r"\x.x y", "y", "x");
+        assert_substitutes_to(r"\x.x y", r"\x.x y", "y", "x");
     }
 
     #[test]
     fn test_abstraction_with_bound_name_in_free_variables_of_substitute() {
         assert_substitutes_to(
-            r"\x'.(\y.x y) y",
+            r"\x'.x' (\y.x y)",
             r"\x.x y",
             r"\y.x y",
-            "x"
+            "y"
         );
     }
 
@@ -149,33 +151,38 @@ mod tests {
 
     mod rewrite {
         use super::super::*;
-        use crate::parser::parse;
+        use crate::parser::parse_one;
 
         fn assert_rewrites_to(expected: &str, expr: &str, var: &str) {
             assert_eq!(
-                parse(expected).unwrap(),
-                rewrite(var, &parse(expr).unwrap())
+                parse_one(expected).unwrap(),
+                rewrite(var, &parse_one(expr).unwrap())
             );
         }
 
         #[test]
         fn test_with_variable() {
-            assert_rewrites_to("x", "x", "x");
+            assert_rewrites_to("x'", "x", "x");
         }
 
         #[test]
         fn test_with_application() {
-            assert_rewrites_to("x y", "x y", "x");
+            assert_rewrites_to("x' y", "x y", "x");
         }
 
         #[test]
         fn test_simple_abstraction() {
-            assert_rewrites_to(r"\x' . x' y", r"\x.x y", "x")
+            assert_rewrites_to(r"\x''.x'' y", r"\x.x y", "x")
+        }
+
+        #[test]
+        fn test_abstraction_with_bound_name_in_free_variables_of_substitute() {
+            assert_rewrites_to(r"\x.x y'", r"\x.x y", "y");
         }
 
         #[test]
         fn test_nested_abstraction_with_same_bound_variable_name() {
-            assert_rewrites_to(r"\x' . x' \y . y \x''.x''", r"\x.x \y.y \x.x", "x");
+            assert_rewrites_to(r"\x''.x'' \y.y \x'''.x'''", r"\x.x \y.y \x.x", "x");
         }
     }
 }

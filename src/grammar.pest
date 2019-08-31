@@ -1,7 +1,6 @@
-WHITESPACE = _{ "\n" | "\t" | "\r" | SEPARATOR }
+WHITESPACE = _{ "\t" | "\r" | SPACE_SEPARATOR }
 COMMENT = _{
   "/*" ~ (!"*/" ~ ANY)* ~ "*/"
-  | "//" ~ ANY+ ~ "\n"
 }
 
 DOT = _{ "." }
@@ -11,23 +10,33 @@ VARIABLE_CHAR = _{ LETTER | NUMBER | "_" | "'" }
 OPEN_PAREN = _{ "(" }
 CLOSE_PAREN = _{ ")" }
 
-MACRO_START = _{ "=" }
-MACRO_END = _{ ";" }
-
 main = {
-  SOI ~ macros ~ term ~ EOI
+  SOI ~ body
+}
+
+body = _{
+  line_comment ~ body
+  | line ~ ";" ~ body
+  | line ~ "\n"*
+  | "\n"+ ~ body
+  | EOI
+}
+
+line = _{
+  macro_
+  | term
+}
+
+line_comment = _{
+  "//" ~ (!"\n" ~ ANY)* ~ "\n"
 }
 
 // Macros are shortand for expressions that can be reused. Variables in a term
 // that share the name of a macro will be replaced by the right-hand side of
 // the macro.
 
-macros = {
-  macro_*
-}
-
 macro_ = {
-  variable ~ MACRO_START ~ term ~ MACRO_END
+  variable ~ "=" ~ term
 }
 
 // This is essentially
@@ -45,7 +54,7 @@ abstraction = !{
 }
 
 application = !{
-  simple_term+
+  simple_term ~ simple_term+
 }
 
 term = !{

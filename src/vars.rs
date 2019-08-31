@@ -33,12 +33,12 @@ impl Variables for Term {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use crate::parser::parse_one;
 
     fn assert_fvs_same(expected: Vec<&str>, t: &str) {
         assert_eq!(
             expected.into_iter().map(str::to_string).collect::<HashSet<_>>(),
-            parse(t).unwrap().free_variables()
+            parse_one(t).unwrap().free_variables()
         );
     }
 
@@ -71,6 +71,14 @@ mod tests {
         assert_fvs_same(
             vec!["z"],
             r"\x.\y.x y z"
+        );
+    }
+
+    #[test]
+    fn test_with_nested_abstraction_having_overlapping_bound_names() {
+        assert_fvs_same(
+            vec![],
+            r"\f.\t.\f.f"
         );
     }
 }

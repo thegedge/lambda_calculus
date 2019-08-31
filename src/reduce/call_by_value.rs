@@ -40,13 +40,13 @@ impl Reduction for CallByValue {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse;
+    use crate::parser::parse_one;
     use super::*;
 
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
-            parse(expected).unwrap(),
-            CallByValue::new().reduce(&parse(expr).unwrap())
+            parse_one(expected).unwrap(),
+            CallByValue::new().reduce(&parse_one(expr).unwrap())
         )
     }
 
@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_does_not_reduce_simple_application() {
+    pub fn test_does_not_reduce_application_with_variable_on_left() {
         assert_reduces_to(r"x \y.y", r"x \y.y");
     }
 
@@ -81,11 +81,6 @@ mod tests {
     }
 
     #[test]
-    pub fn test_does_not_reduce_application_with_variable_on_left() {
-        assert_reduces_to(r"z (\x.x) (\z.z)", r"z (\x.x) (\z.z)");
-    }
-
-    #[test]
     pub fn test_reduces_application_fully1() {
         assert_reduces_to(r"z", r"(\x.x z) \z.z");
     }
@@ -96,7 +91,17 @@ mod tests {
     }
 
     #[test]
-    pub fn test_reduces_multi_argument_application() {
+    pub fn test_reduces_two_argument_application() {
         assert_reduces_to(r"a", r"(\t.\f.t) a b");
+    }
+
+    #[test]
+    pub fn test_reduces_three_argument_application() {
+        assert_reduces_to(r"a b c", r"(\x.\y.\z. x y z) a b c");
+    }
+
+    #[test]
+    pub fn test_reduces_with_and_tru_fls() {
+        assert_reduces_to(r"\t.\f.f", r"(\a.\b.(a b) (\t.\f.f)) (\t.\f.t) (\t.\f.f)");
     }
 }

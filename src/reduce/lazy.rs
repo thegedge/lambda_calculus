@@ -35,13 +35,13 @@ impl Reduction for Lazy {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse;
+    use crate::parser::parse_one;
     use super::*;
 
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
-            parse(expected).unwrap(),
-            Lazy::new().reduce(&parse(expr).unwrap())
+            parse_one(expected).unwrap(),
+            Lazy::new().reduce(&parse_one(expr).unwrap())
         )
     }
 

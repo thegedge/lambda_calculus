@@ -42,13 +42,13 @@ impl Reduction for Full {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse;
+    use crate::parser::parse_one;
     use super::*;
 
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
-            parse(expected).unwrap(),
-            Full::new().reduce(&parse(expr).unwrap())
+            parse_one(expected).unwrap(),
+            Full::new().reduce(&parse_one(expr).unwrap())
         )
     }
 
