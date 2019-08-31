@@ -16,7 +16,7 @@ use failure::{
 #[grammar = "grammar.pest"]
 struct LambdaCalculusParser;
 
-struct Parser<'p> {
+pub struct Parser<'p> {
     macros: HashMap<&'p str, Term>,
     terms: Vec<Term>,
 }

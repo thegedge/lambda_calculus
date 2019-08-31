@@ -13,12 +13,15 @@ use reduce::{
 };
 
 fn main() -> Result<(), failure::Error> {
+    let mut parser = parser::Parser::new();
+
     let mut text = String::new();
     io::stdin().read_to_string(&mut text).unwrap();
-    parser::parse(&text).map(|result| {
-        for term in result {
-            println!(" original: {}", term);
-            println!("evaluated: {}\n", Strategy::new().reduce(&term));
-        }
-    })
+    parser.parse(&text)
+        .map(|result| {
+            for term in result {
+                println!(" original: {}", term);
+                println!("evaluated: {}\n", Strategy::new().reduce(&term));
+            }
+        })
 }
