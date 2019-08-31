@@ -26,6 +26,9 @@ enum ParseError {
     #[fail(display = "empty input")]
     EmptyInput,
 
+    #[fail(display = "no terms")]
+    NoTerms,
+
     #[fail(display = "failed to parse: {}", _0)]
     PestError(pest::error::Error<Rule>),
 
@@ -101,11 +104,12 @@ impl <T> From<T> for Term
 
 pub fn parse(text: &str) -> Result<Vec<Term>, failure::Error> {
     let mut parser = Parser::new();
-    parser.parse(text)
+    parser.parse(text).map(Iterator::collect)
 }
 
 pub fn parse_one(text: &str) -> Result<Term, failure::Error> {
-    parse(text).map(|v| v[0].clone())
+    let mut parser = Parser::new();
+    parser.parse(text).and_then(|mut iter| iter.next().ok_or(ParseError::NoTerms.into()))
 }
 
 impl <'p> Parser<'p> {
@@ -116,14 +120,14 @@ impl <'p> Parser<'p> {
         }
     }
 
-    pub fn parse(&mut self, text: &'p str) -> Result<Vec<Term>, failure::Error> {
+    pub fn parse(&mut self, text: &'p str) -> Result<impl Iterator<Item=Term> + '_, failure::Error> {
         let pair = LambdaCalculusParser::parse(Rule::main, &text)
             .map_err(|e| ParseError::PestError(e))
             .map(|mut pairs| pairs.next())?
             .ok_or(ParseError::EmptyInput)?;
 
         self.process_pair(pair);
-        Ok(self.terms.clone())
+        Ok(self.terms.drain(0..))
     }
 
     fn process_pair(&mut self, pair: Pair<'p, Rule>) -> Result<(), ParseError> {
