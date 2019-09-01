@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::parser::Term;
+use crate::notation::named::Term;
 
 /// A trait for computing free variables on an expression.
 pub trait Variables {

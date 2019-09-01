@@ -2,7 +2,7 @@
 //!
 //! This strategy reduces the outermost terms, but only after the right-hand side has been reduced
 //! to a value (abstractions in a simple calculus).
-use crate::parser::Term;
+use crate::notation::named::Term;
 use crate::substitution::Substitutable;
 
 use super::Reduction;

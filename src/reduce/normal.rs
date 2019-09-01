@@ -1,7 +1,7 @@
 //! Normal order reduction strategy
 //!
 //! This strategy will reduce the left and outermost terms first.
-use crate::parser::Term;
+use crate::notation::named::Term;
 use crate::substitution::Substitutable;
 
 use super::Reduction;

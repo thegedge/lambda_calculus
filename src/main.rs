@@ -2,6 +2,7 @@
 
 use std::io::{self, Read};
 
+mod notation;
 mod parser;
 mod reduce;
 mod substitution;

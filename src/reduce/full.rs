@@ -1,7 +1,7 @@
 //! Full beta reduction strategy
 //!
 //! This strategy can reduce any term at any point.
-use crate::parser::Term;
+use crate::notation::named::Term;
 use crate::substitution::Substitutable;
 
 use super::Reduction;

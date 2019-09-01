@@ -1,7 +1,7 @@
 //! Lazy (call by name) reduction strategy
 //!
 //! This strategy uses the normal order strategy, but does not reduce within abstractions.
-use crate::parser::Term;
+use crate::notation::named::Term;
 use crate::substitution::Substitutable;
 
 use super::Reduction;
