@@ -18,21 +18,21 @@ impl CallByValue {
 impl Reduction for CallByValue {
     type Term = Term;
 
-    fn reduce(&self, term: &Self::Term) -> Self::Term {
+    fn reduce(&self, term: Self::Term) -> Self::Term {
         match term {
-            Term::Application(t1, t2) if t1.is_redex() => {
+            Term::Application(box t1, t2) if t1.is_redex() => {
                 let t1_reduced = self.reduce(t1);
-                self.reduce(&Term::Application(box t1_reduced, t2.clone()))
+                self.reduce(Term::Application(box t1_reduced, t2))
             },
-            Term::Application(t1, t2) if t2.is_redex() => {
+            Term::Application(t1, box t2) if t2.is_redex() => {
                 let t2_reduced = self.reduce(t2);
-                self.reduce(&Term::Application(t1.clone(), box t2_reduced))
+                self.reduce(Term::Application(t1, box t2_reduced))
             },
-            Term::Application(box Term::Abstraction(name, body), arg) => {
-                self.reduce(&body.substitute(name.as_str(), &arg))
+            Term::Application(box Term::Abstraction(name, body), box arg) => {
+                self.reduce(body.substitute(name.as_str(), &arg))
             },
             _ => {
-                term.clone()
+                term
             },
         }
     }
@@ -46,7 +46,7 @@ mod tests {
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
             parse_one(expected).unwrap(),
-            CallByValue::new().reduce(&parse_one(expr).unwrap())
+            CallByValue::new().reduce(parse_one(expr).unwrap())
         )
     }
 

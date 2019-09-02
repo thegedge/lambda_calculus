@@ -19,5 +19,5 @@ pub trait Reduction {
     type Term;
 
     /// Reduce a given term
-    fn reduce(&self, term: &Self::Term) -> Self::Term;
+    fn reduce(&self, term: Self::Term) -> Self::Term;
 }

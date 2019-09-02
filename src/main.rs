@@ -1,4 +1,4 @@
-#![feature(box_syntax, box_patterns)]
+#![feature(box_syntax, box_patterns, bind_by_move_pattern_guards)]
 
 use std::io::{self, Read};
 
@@ -22,7 +22,7 @@ fn main() -> Result<(), failure::Error> {
         .map(|result| {
             for term in result {
                 println!(" original: {}", term);
-                println!("evaluated: {}\n", Strategy::new().reduce(&term));
+                println!("evaluated: {}\n", Strategy::new().reduce(term));
             }
         })
 }

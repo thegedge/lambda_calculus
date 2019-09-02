@@ -17,17 +17,17 @@ impl Lazy {
 impl Reduction for Lazy {
     type Term = Term;
 
-    fn reduce(&self, term: &Self::Term) -> Self::Term {
+    fn reduce(&self, term: Self::Term) -> Self::Term {
         match term {
-            Term::Application(box Term::Abstraction(name, body), t) => {
-                self.reduce(&body.substitute(name.as_str(), &t))
+            Term::Application(box Term::Abstraction(name, body), box t) => {
+                self.reduce(body.substitute(name.as_str(), &t))
             },
-            Term::Application(t1, t2) if t1.is_redex() => {
+            Term::Application(box t1, t2) if t1.is_redex() => {
                 let t1_reduced = self.reduce(t1);
-                self.reduce(&Term::Application(box t1_reduced, t2.clone()))
+                self.reduce(Term::Application(box t1_reduced, t2))
             },
             _ => {
-                term.clone()
+                term
             },
         }
     }
@@ -41,7 +41,7 @@ mod tests {
     fn assert_reduces_to(expected: &str, expr: &str) {
         assert_eq!(
             parse_one(expected).unwrap(),
-            Lazy::new().reduce(&parse_one(expr).unwrap())
+            Lazy::new().reduce(parse_one(expr).unwrap())
         )
     }
 
