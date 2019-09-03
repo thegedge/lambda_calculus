@@ -13,7 +13,14 @@ impl Term {
     pub fn is_redex(&self) -> bool {
         match self {
             Term::Application(box Term::Abstraction(_, _), _) => true,
-            Term::Application(t, _) => t.is_redex(),
+            Term::Application(t1, t2) => t1.is_redex() || t2.is_redex(),
+            _ => false,
+        }
+    }
+
+    pub fn is_value(&self) -> bool {
+        match self {
+            Term::Abstraction(_, _) => true,
             _ => false,
         }
     }

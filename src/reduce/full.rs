@@ -17,24 +17,25 @@ impl Full {
 impl Reduction for Full {
     type Term = Term;
 
-    fn reduce(&self, term: Self::Term) -> Self::Term {
+    fn step(&self, term: Self::Term) -> Option<Self::Term> {
         match term {
-            Term::Abstraction(s, box t) => {
-                Term::Abstraction(s, box self.reduce(t))
+            Term::Abstraction(arg, box body) => {
+                self.step(body)
+                    .map(|body_reduced| Term::Abstraction(arg, box body_reduced))
             },
             Term::Application(box t1, t2) if t1.is_redex() => {
-                let t1_reduced = self.reduce(t1);
-                self.reduce(Term::Application(box t1_reduced, t2))
+                self.step(t1)
+                    .map(|t1_reduced| Term::Application(box t1_reduced, t2))
             },
             Term::Application(t1, box t2) if t2.is_redex() => {
-                let t2_reduced = self.reduce(t2);
-                self.reduce(Term::Application(t1, box t2_reduced))
+                self.step(t2)
+                    .map(|t2_reduced| Term::Application(t1, box t2_reduced))
             },
-            Term::Application(box Term::Abstraction(name, body), box t) => {
-                self.reduce(body.substitute(name.as_str(), &t))
+            Term::Application(box Term::Abstraction(name, body), box arg) => {
+                Some(body.substitute(name.as_str(), &arg))
             },
             _ => {
-                term
+                None
             },
         }
     }

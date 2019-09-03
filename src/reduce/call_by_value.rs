@@ -18,21 +18,21 @@ impl CallByValue {
 impl Reduction for CallByValue {
     type Term = Term;
 
-    fn reduce(&self, term: Self::Term) -> Self::Term {
+    fn step(&self, term: Self::Term) -> Option<Self::Term> {
         match term {
-            Term::Application(box t1, t2) if t1.is_redex() => {
-                let t1_reduced = self.reduce(t1);
-                self.reduce(Term::Application(box t1_reduced, t2))
+            Term::Application(box Term::Abstraction(name, body), box arg) if arg.is_value() => {
+                Some(body.substitute(name.as_str(), &arg))
             },
-            Term::Application(t1, box t2) if t2.is_redex() => {
-                let t2_reduced = self.reduce(t2);
-                self.reduce(Term::Application(t1, box t2_reduced))
+            Term::Application(t1, box t2) if t1.is_value() => {
+                self.step(t2)
+                    .map(|t2_reduced| Term::Application(t1, box t2_reduced))
             },
-            Term::Application(box Term::Abstraction(name, body), box arg) => {
-                self.reduce(body.substitute(name.as_str(), &arg))
+            Term::Application(box t1, t2) => {
+                self.step(t1)
+                    .map(|t1_reduced| Term::Application(box t1_reduced, t2))
             },
             _ => {
-                term
+                None
             },
         }
     }
@@ -72,7 +72,12 @@ mod tests {
 
     #[test]
     pub fn test_reduces_simple_application() {
-        assert_reduces_to(r"x", r"(\y.y) x");
+        assert_reduces_to(r"\z.z", r"(\y.y) (\z.z)");
+    }
+
+    #[test]
+    pub fn test_does_not_reduce_application_without_a_value_argument() {
+        assert_reduces_to(r"(\y.y) x", r"(\y.y) x");
     }
 
     #[test]
@@ -81,23 +86,13 @@ mod tests {
     }
 
     #[test]
-    pub fn test_reduces_application_fully1() {
-        assert_reduces_to(r"z", r"(\x.x z) \z.z");
-    }
-
-    #[test]
-    pub fn test_reduces_application_fully2() {
-        assert_reduces_to(r"z \z.z", r"((\x.x) z) \z.z");
-    }
-
-    #[test]
     pub fn test_reduces_two_argument_application() {
-        assert_reduces_to(r"a", r"(\t.\f.t) a b");
+        assert_reduces_to(r"\x.x", r"(\t.\f.t) (\x.x) (\y.y)");
     }
 
     #[test]
     pub fn test_reduces_three_argument_application() {
-        assert_reduces_to(r"a b c", r"(\x.\y.\z. x y z) a b c");
+        assert_reduces_to(r"\z.z", r"(\x.\y.\z. x y z) (\x.x) (\y.y) (\z.z)");
     }
 
     #[test]

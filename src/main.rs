@@ -18,11 +18,13 @@ fn main() -> Result<(), failure::Error> {
 
     let mut text = String::new();
     io::stdin().read_to_string(&mut text).unwrap();
-    parser.parse(&text)
+    parser
+        .parse(&text)
         .map(|result| {
             for term in result {
-                println!(" original: {}", term);
-                println!("evaluated: {}\n", Strategy::new().reduce(term));
+                // TODO maybe have parser terms maintain the slice from which they came, so we
+                // could write something like (expr = result)
+                println!("{}", Strategy::new().reduce(term));
             }
         })
 }

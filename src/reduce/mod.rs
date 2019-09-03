@@ -16,8 +16,16 @@ pub use normal::Normal;
 
 /// A beta reduction strategy.
 pub trait Reduction {
-    type Term;
+    type Term : Clone;
 
-    /// Reduce a given term
-    fn reduce(&self, term: Self::Term) -> Self::Term;
+    /// Perform one small step reduction on the given term
+    fn step(&self, term: Self::Term) -> Option<Self::Term>;
+
+    /// Reduce the given term as much as possible
+    fn reduce(&self, mut term: Self::Term) -> Self::Term {
+        while let Some(new_term) = self.step(term.clone()) {
+            term = new_term;
+        }
+        term
+    }
 }
