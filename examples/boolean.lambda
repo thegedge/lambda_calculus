@@ -1,8 +1,14 @@
 tru = \t.\f. t;
 fls = \t.\f. f;
 and = \a.\b. a b fls;
+or = \a.\b. a tru b;
 
 and tru tru;
 and tru fls;
 and fls tru;
 and fls fls;
+
+or tru tru;
+or tru fls;
+or fls tru;
+or fls fls;

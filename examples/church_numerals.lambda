@@ -1,0 +1,11 @@
+scc = \n.\s.\z. s (n s z);
+plus = \m.\n.\s.\z. m s (n s z);
+
+c_0 = \s.\z.z;
+c_1 = scc c_0;
+c_2 = scc c_1;
+c_3 = scc c_2;
+
+c_3;
+plus c_2 c_1;
+plus c_1 c_2;

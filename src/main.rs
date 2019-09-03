@@ -9,7 +9,7 @@ mod substitution;
 mod vars;
 
 use reduce::{
-    CallByValue as Strategy,
+    Normal as Strategy,
     Reduction,
 };
 
