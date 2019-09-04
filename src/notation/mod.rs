@@ -1,4 +1,9 @@
+pub mod conversion;
+pub mod de_bruijn;
 pub mod named;
+
+pub use de_bruijn::Term as DeBruijn;
+pub use named::Term as Named;
 
 pub trait Notation
     : std::fmt::Display
