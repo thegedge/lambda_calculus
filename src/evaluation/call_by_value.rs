@@ -17,18 +17,19 @@ impl CallByValue {
 
 impl Evaluable for CallByValue {
     type Term = Term;
+    type Context = super::EmptyContext;
 
-    fn step(&self, term: Self::Term) -> Option<Self::Term> {
+    fn step(&self, ctx: &mut Self::Context, term: Self::Term) -> Option<Self::Term> {
         match term {
             Term::Application(box Term::Abstraction(name, body), box arg) if arg.is_value() => {
                 Some(body.substitute(name.as_str(), &arg))
             },
             Term::Application(t1, box t2) if t1.is_value() => {
-                self.step(t2)
+                self.step(ctx, t2)
                     .map(|t2_evaluated| Term::Application(t1, box t2_evaluated))
             },
             Term::Application(box t1, t2) => {
-                self.step(t1)
+                self.step(ctx, t1)
                     .map(|t1_evaluated| Term::Application(box t1_evaluated, t2))
             },
             _ => {
@@ -41,12 +42,13 @@ impl Evaluable for CallByValue {
 #[cfg(test)]
 mod tests {
     use crate::parser::parse_one;
+    use crate::evaluation::EmptyContext;
     use super::*;
 
     fn assert_evaluates_to(expected: &str, expr: &str) {
         assert_eq!(
             parse_one(expected).unwrap(),
-            CallByValue::new().evaluate(parse_one(expr).unwrap())
+            CallByValue::new().evaluate(&mut EmptyContext{}, parse_one(expr).unwrap())
         )
     }
 

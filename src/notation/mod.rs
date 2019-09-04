@@ -3,6 +3,7 @@ pub mod named;
 pub trait Notation
     : std::fmt::Display
 {
+    /// Type used to represent variable names
     type VariableName;
 
     /// Returns a term representing the application of `arg` to `func`

@@ -16,19 +16,20 @@ impl Full {
 
 impl Evaluable for Full {
     type Term = Term;
+    type Context = super::EmptyContext;
 
-    fn step(&self, term: Self::Term) -> Option<Self::Term> {
+    fn step(&self, ctx: &mut Self::Context, term: Self::Term) -> Option<Self::Term> {
         match term {
             Term::Abstraction(arg, box body) => {
-                self.step(body)
+                self.step(ctx, body)
                     .map(|body_evaluated| Term::Abstraction(arg, box body_evaluated))
             },
             Term::Application(box t1, t2) if t1.is_redex() => {
-                self.step(t1)
+                self.step(ctx, t1)
                     .map(|t1_evaluated| Term::Application(box t1_evaluated, t2))
             },
             Term::Application(t1, box t2) if t2.is_redex() => {
-                self.step(t2)
+                self.step(ctx, t2)
                     .map(|t2_evaluated| Term::Application(t1, box t2_evaluated))
             },
             Term::Application(box Term::Abstraction(name, body), box arg) => {
@@ -44,12 +45,13 @@ impl Evaluable for Full {
 #[cfg(test)]
 mod tests {
     use crate::parser::parse_one;
+    use crate::evaluation::EmptyContext;
     use super::*;
 
     fn assert_evaluates_to(expected: &str, expr: &str) {
         assert_eq!(
             parse_one(expected).unwrap(),
-            Full::new().evaluate(parse_one(expr).unwrap())
+            Full::new().evaluate(&mut EmptyContext{}, parse_one(expr).unwrap())
         )
     }
 

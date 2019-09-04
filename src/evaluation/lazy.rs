@@ -16,14 +16,15 @@ impl Lazy {
 
 impl Evaluable for Lazy {
     type Term = Term;
+    type Context = super::EmptyContext;
 
-    fn step(&self, term: Self::Term) -> Option<Self::Term> {
+    fn step(&self, ctx: &mut Self::Context, term: Self::Term) -> Option<Self::Term> {
         match term {
             Term::Application(box Term::Abstraction(name, body), box arg) => {
                 Some(body.substitute(name.as_str(), &arg))
             },
             Term::Application(box t1, t2) if t1.is_redex() => {
-                self.step(t1)
+                self.step(ctx, t1)
                     .map(|t1_evaluated| Term::Application(box t1_evaluated, t2))
             },
             _ => {
@@ -36,12 +37,13 @@ impl Evaluable for Lazy {
 #[cfg(test)]
 mod tests {
     use crate::parser::parse_one;
+    use crate::evaluation::EmptyContext;
     use super::*;
 
     fn assert_evaluates_to(expected: &str, expr: &str) {
         assert_eq!(
             parse_one(expected).unwrap(),
-            Lazy::new().evaluate(parse_one(expr).unwrap())
+            Lazy::new().evaluate(&mut EmptyContext{}, parse_one(expr).unwrap())
         )
     }
 

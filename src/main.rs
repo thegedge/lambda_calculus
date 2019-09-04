@@ -10,6 +10,7 @@ mod vars;
 
 use evaluation::{
     Normal as Strategy,
+    EmptyContext,
     Evaluable,
 };
 
@@ -24,7 +25,7 @@ fn main() -> Result<(), failure::Error> {
             for term in result {
                 // TODO maybe have parser terms maintain the slice from which they came, so we
                 // could write something like (expr = result)
-                println!("{}", Strategy::new().evaluate(term));
+                println!("{}", Strategy::new().evaluate(&mut EmptyContext{}, term));
             }
         })
 }
