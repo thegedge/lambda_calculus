@@ -1,4 +1,4 @@
-//! Types for reducing lambda calucus expressions.
+//! Types for evaluating lambda calucus expressions.
 //!
 //! An expression of the form `(\x.t1) t2` is reducible, and known as a redex.
 
@@ -15,14 +15,14 @@ pub use normal::Normal;
 // TODO for all strategies, have tests to ensure evaluation happens as expected.
 
 /// A beta reduction strategy.
-pub trait Reduction {
+pub trait Evaluable {
     type Term : Clone;
 
-    /// Perform one small step reduction on the given term
+    /// Perform one small step evaluation on the given term
     fn step(&self, term: Self::Term) -> Option<Self::Term>;
 
-    /// Reduce the given term as much as possible
-    fn reduce(&self, mut term: Self::Term) -> Self::Term {
+    /// Evaluate the given term as much as possible
+    fn evaluate(&self, mut term: Self::Term) -> Self::Term {
         while let Some(new_term) = self.step(term.clone()) {
             term = new_term;
         }

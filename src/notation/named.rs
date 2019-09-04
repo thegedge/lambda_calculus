@@ -2,6 +2,8 @@ use std::{
     fmt,
 };
 
+use super::Notation;
+
 #[derive(Clone, PartialEq)]
 pub enum Term {
     Variable(String),
@@ -23,6 +25,25 @@ impl Term {
             Term::Abstraction(_, _) => true,
             _ => false,
         }
+    }
+}
+
+impl Notation for Term {
+    type VariableName = String;
+
+    /// Returns a term representing the application of `arg` to `func`
+    fn application(func: Self, arg: Self) -> Self {
+        Term::Application(box func, box arg)
+    }
+
+    /// Returns an abstraction term with the given body and bound variable name
+    fn abstraction(bound_var_name: Self::VariableName, body: Self) -> Self {
+        Term::Abstraction(bound_var_name, box body)
+    }
+
+    /// Returns a variable term with the given name
+    fn variable(name: Self::VariableName) -> Self {
+        Term::Variable(name)
     }
 }
 
