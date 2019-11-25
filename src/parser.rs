@@ -11,7 +11,7 @@ use failure::{
     Fail,
 };
 
-use crate::notation::named::Term;
+type Term = crate::term::Term<String>;
 
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
@@ -141,7 +141,7 @@ impl <'p> Parser<'p> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::notation::named::{Term, l, a, v};
+    use crate::term::{l, a, v};
 
     fn assert_eq(code: &str, expected: Term) {
         assert_eq!(
@@ -245,27 +245,6 @@ mod tests {
         assert_eq(
             r"id = \x.x; id (id y)",
             a(l("x", "x"), a(l("x", "x"), "y"))
-        );
-    }
-
-    #[test]
-    pub fn test_is_redex_true_for_abstraction_application() {
-        assert!(
-            a(l("x", "x"), "y").is_redex()
-        );
-    }
-
-    #[test]
-    pub fn test_is_redex_false_for_non_redex() {
-        assert!(
-            !a("y", l("x", "x")).is_redex()
-        );
-    }
-
-    #[test]
-    pub fn test_is_redex_true_for_nested_abstraction() {
-        assert!(
-            a(a(a(l("x", "x"), "a"), "b"), "c").is_redex()
         );
     }
 }

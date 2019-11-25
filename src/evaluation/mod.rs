@@ -18,7 +18,7 @@ pub struct EmptyContext;
 
 /// A beta reduction strategy.
 pub trait Evaluable {
-    type Term : Clone;
+    type Term : Into<crate::term::DeBruijn>;
     type Context;
 
     /// Perform one small step evaluation on the given term

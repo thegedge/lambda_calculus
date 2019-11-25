@@ -1,7 +1,7 @@
 //! Term substitution
 use std::borrow::Borrow;
 
-use crate::notation::named::Term;
+use crate::term::Named as Term;
 use crate::vars::Variables;
 
 const PRIME: &str = "'";

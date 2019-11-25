@@ -1,17 +1,20 @@
 ///! Traits and structs for querying things about variables in an expression
 
 use std::collections::HashSet;
+use std::hash::Hash;
 
-use crate::notation::named::Term;
+use crate::term::Term;
 
 /// A trait for computing free variables on an expression.
-pub trait Variables {
+pub trait Variables<V> {
     /// Returns the free variables in a term.
-    fn free_variables(&self) -> HashSet<String>;
+    fn free_variables(&self) -> HashSet<V>;
 }
 
-impl Variables for Term {
-    fn free_variables(&self) -> HashSet<String> {
+impl <V> Variables<V> for Term<V>
+    where V: Eq + Clone + Hash
+{
+    fn free_variables(&self) -> HashSet<V> {
         match self {
             Term::Variable(s) => {
                 vec![s.clone()].into_iter().collect()
@@ -38,7 +41,7 @@ mod tests {
     fn assert_fvs_same(expected: Vec<&str>, t: &str) {
         assert_eq!(
             expected.into_iter().map(str::to_string).collect::<HashSet<_>>(),
-            parse_one(t).unwrap().free_variables()
+            parse_one(t).unwrap().as_ref().free_variables()
         );
     }
 

@@ -2,7 +2,7 @@
 //!
 //! This strategy evaluates the outermost terms, but only after the right-hand side has been evaluated
 //! to a value (abstractions in a simple calculus).
-use crate::notation::named::Term;
+use crate::term::DeBruijn;
 use crate::substitution::Substitutable;
 
 use super::Evaluable;
@@ -16,7 +16,6 @@ impl CallByValue {
 }
 
 impl Evaluable for CallByValue {
-    type Term = Term;
     type Context = super::EmptyContext;
 
     fn step(&self, ctx: &mut Self::Context, term: Self::Term) -> Option<Self::Term> {

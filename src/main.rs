@@ -3,9 +3,9 @@
 use std::io::{self, Read};
 
 mod evaluation;
-mod notation;
 mod parser;
 mod substitution;
+mod term;
 mod vars;
 
 use evaluation::{
